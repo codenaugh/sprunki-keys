@@ -31,6 +31,9 @@ npm-debug.log*
 # Testing
 coverage/
 
+# Firebase
+.firebase/
+
 # Temporary
 tmp/
 .tmp/

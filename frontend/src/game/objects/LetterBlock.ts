@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import type { TimingQuality } from '../types';
 
 export class LetterBlock {
   private scene: Phaser.Scene;
@@ -91,20 +90,6 @@ export class LetterBlock {
         this.flashing = false;
       }
     }
-  }
-
-  /** Calculate timing quality using real-time position from cameraOffset */
-  getTimingQuality(playerScreenX: number, cameraOffset: number): TimingQuality | null {
-    if (this.grabbed || this.missed) return null;
-
-    // Calculate current screen position directly (don't rely on container.x which may be stale)
-    const screenX = this.worldX - cameraOffset;
-    const dist = Math.abs(screenX - playerScreenX);
-
-    if (dist < this.timingWindowPx * 0.3) return 'perfect';
-    if (dist < this.timingWindowPx * 0.65) return 'good';
-    if (dist < this.timingWindowPx) return 'ok';
-    return null;
   }
 
   grab() {
