@@ -33,10 +33,13 @@ export class InputManager {
     this.hiddenInput.autocomplete = 'off';
     this.hiddenInput.setAttribute('autocorrect', 'off');
     this.hiddenInput.setAttribute('spellcheck', 'false');
+    // Position at top-left but invisible — avoid top:-100px which causes
+    // the browser to scroll when focusing. fontSize:16px prevents iOS zoom.
     this.hiddenInput.style.cssText =
-      'position:fixed;top:-100px;left:0;width:1px;height:1px;opacity:0;';
+      'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;z-index:-1;';
     document.body.appendChild(this.hiddenInput);
     this.hiddenInput.addEventListener('input', this.handleMobileInput);
+    this.hiddenInput.addEventListener('focus', this.preventScrollOnFocus);
     this.hiddenInput.focus();
   };
 
@@ -52,6 +55,11 @@ export class InputManager {
       }
     }
   }
+
+  private preventScrollOnFocus = () => {
+    // Immediately undo any scroll the browser did to reveal the input
+    window.scrollTo(0, 0);
+  };
 
   private handleMobileInput = () => {
     if (!this.hiddenInput) return;
@@ -74,6 +82,7 @@ export class InputManager {
     this.scene.input.off('pointerdown', this.onFirstTap, this);
     if (this.hiddenInput) {
       this.hiddenInput.removeEventListener('input', this.handleMobileInput);
+      this.hiddenInput.removeEventListener('focus', this.preventScrollOnFocus);
       this.hiddenInput.remove();
       this.hiddenInput = null;
     }
