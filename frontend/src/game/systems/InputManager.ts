@@ -23,10 +23,8 @@ export class InputManager {
     document.body.appendChild(this.hiddenInput);
     this.hiddenInput.addEventListener('input', this.handleMobileInput);
 
-    // Focus on tap/click for mobile
+    // Focus on tap/click for mobile (no auto-focus to avoid browser permission prompts)
     this.scene.input.on('pointerdown', this.focusMobileInput, this);
-    // Auto-focus on start
-    this.focusMobileInput();
   }
 
   onKeyPress(callback: (key: string) => void) {
