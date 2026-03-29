@@ -55,9 +55,6 @@ export function LevelSelect() {
           );
         })}
       </div>
-      <p style={{ marginTop: '24px', fontSize: '12px', color: '#888', textAlign: 'center' }}>
-        Your browser may ask for permission to access keyboard input — this is needed for gameplay.
-      </p>
     </div>
   );
 }
