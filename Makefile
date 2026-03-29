@@ -2,7 +2,7 @@
 
 # Development - run both frontend and backend
 dev:
-	@echo "Starting Sprunki Type development servers..."
+	@echo "Starting Sprunki Keys development servers..."
 	@make dev-backend & make dev-frontend
 
 dev-frontend:
