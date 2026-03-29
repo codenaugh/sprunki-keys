@@ -238,7 +238,7 @@ export class GameScene extends Phaser.Scene {
   private destroyScreen(items: Phaser.GameObjects.GameObject[]) {
     items.forEach(obj => obj.destroy());
     this.children.list
-      .filter(c => c.depth === 31)
+      .filter(c => 'depth' in c && (c as unknown as { depth: number }).depth === 31)
       .forEach(c => c.destroy());
   }
 
