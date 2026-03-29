@@ -24,7 +24,9 @@ export class GameScene extends Phaser.Scene {
   private soundManager!: SoundManager;
 
   private ground!: Phaser.GameObjects.TileSprite;
+  private hillsFar!: Phaser.GameObjects.TileSprite;
   private hills!: Phaser.GameObjects.TileSprite;
+  private clouds: Phaser.GameObjects.Image[] = [];
 
   private cameraOffset = 0;
   private playerScreenX = 200;
@@ -42,6 +44,9 @@ export class GameScene extends Phaser.Scene {
 
   private qualityText!: Phaser.GameObjects.Text;
   private wordDisplayText!: Phaser.GameObjects.Text;
+  private progressBg!: Phaser.GameObjects.Graphics;
+  private progressFill!: Phaser.GameObjects.Graphics;
+  private progressText!: Phaser.GameObjects.Text;
 
   constructor() {
     super('GameScene');
@@ -75,30 +80,48 @@ export class GameScene extends Phaser.Scene {
     // Sky background
     this.add.image(512, 288, 'sky-bg');
 
-    // Parallax hills
-    this.hills = this.add.tileSprite(512, this.groundY - 60, 1024, 200, 'hills');
+    // Clouds — scattered at different heights and scales
+    this.clouds = [];
+    const cloudPositions = [
+      { x: 150, y: 80, s: 1.2, a: 0.5 },
+      { x: 450, y: 50, s: 0.8, a: 0.35 },
+      { x: 700, y: 100, s: 1.0, a: 0.45 },
+      { x: 900, y: 60, s: 0.6, a: 0.3 },
+      { x: 300, y: 130, s: 0.7, a: 0.25 },
+    ];
+    for (const cp of cloudPositions) {
+      const cloud = this.add.image(cp.x, cp.y, 'cloud');
+      cloud.setScale(cp.s);
+      cloud.setAlpha(cp.a);
+      cloud.setDepth(0);
+      this.clouds.push(cloud);
+    }
+
+    // Far hills — darker silhouette layer
+    this.hillsFar = this.add.tileSprite(512, this.groundY - 60, 1024, 200, 'hills-far');
+    this.hillsFar.setDepth(1);
+    this.hillsFar.setAlpha(0.7);
+
+    // Near hills
+    this.hills = this.add.tileSprite(512, this.groundY - 40, 1024, 200, 'hills');
     this.hills.setDepth(1);
 
     // Ground
     this.ground = this.add.tileSprite(512, this.groundY + 32, 1024, 64, 'ground');
     this.ground.setDepth(2);
 
-    // Ground top line
-    const groundLine = this.add.graphics();
-    groundLine.fillStyle(0x5d8a3c);
-    groundLine.fillRect(0, this.groundY, 1024, 4);
-    groundLine.setDepth(3);
-
     // Player - use PNG character sprite, fall back to procedural if missing
     const textureKey = `char-${this.characterId}`;
     this.player = new Player(this, this.playerScreenX, this.groundY - 35, textureKey);
 
     // Quality text (Perfect! Good! etc)
-    this.qualityText = this.add.text(this.playerScreenX, this.groundY - 100, '', {
-      fontSize: '22px',
-      fontFamily: 'system-ui',
+    this.qualityText = this.add.text(this.playerScreenX, this.groundY - 110, '', {
+      fontSize: '32px',
+      fontFamily: "'Segoe UI', system-ui, sans-serif",
       color: '#f1c40f',
       fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 5,
     });
     this.qualityText.setOrigin(0.5);
     this.qualityText.setDepth(20);
@@ -114,6 +137,31 @@ export class GameScene extends Phaser.Scene {
     });
     this.wordDisplayText.setOrigin(0.5);
     this.wordDisplayText.setDepth(20);
+
+    // Progress bar (top center)
+    const barWidth = 200;
+    const barX = 512 - barWidth / 2;
+    const barY = 18;
+
+    this.progressBg = this.add.graphics();
+    this.progressBg.fillStyle(0x000000, 0.35);
+    this.progressBg.fillRoundedRect(barX, barY, barWidth, 12, 6);
+    this.progressBg.setDepth(20);
+
+    this.progressFill = this.add.graphics();
+    this.progressFill.setDepth(20);
+
+    this.progressText = this.add.text(512, barY + 24, '', {
+      fontSize: '13px',
+      fontFamily: "'Segoe UI', system-ui, sans-serif",
+      color: '#ffffff',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3,
+    });
+    this.progressText.setOrigin(0.5, 0);
+    this.progressText.setDepth(20);
+    this.updateProgress();
 
     // Systems
     this.scrollManager = new ScrollManager(this.levelConfig.scrollSpeed);
@@ -238,6 +286,7 @@ export class GameScene extends Phaser.Scene {
         // Check if word is complete
         if (current.letterIndex >= current.word.length) {
           this.wordsCompleted++;
+          this.updateProgress();
           this.scrollManager.increaseSpeed(this.levelConfig!.speedIncrement);
           this.time.delayedCall(600, () => {
             this.spawnNextWord();
@@ -275,20 +324,41 @@ export class GameScene extends Phaser.Scene {
     this.qualityText.setText(labels[quality] || quality);
     this.qualityText.setColor(colors[quality] || '#ffffff');
     this.qualityText.setAlpha(1);
-    this.qualityText.setScale(0.5);
+    this.qualityText.setScale(0.6);
+    this.qualityText.y = this.groundY - 110;
 
     this.tweens.add({
       targets: this.qualityText,
-      alpha: 0,
-      y: this.groundY - 140,
-      scaleX: 1.2,
-      scaleY: 1.2,
-      duration: 600,
-      ease: 'Quad.easeOut',
+      scaleX: 1.3,
+      scaleY: 1.3,
+      duration: 150,
+      ease: 'Back.easeOut',
+      yoyo: true,
       onComplete: () => {
-        this.qualityText.y = this.groundY - 100;
+        this.tweens.add({
+          targets: this.qualityText,
+          alpha: 0,
+          y: this.groundY - 180,
+          duration: 800,
+          ease: 'Quad.easeOut',
+        });
       },
     });
+  }
+
+  private updateProgress() {
+    const total = this.levelConfig!.wordCount;
+    const done = this.wordsCompleted;
+    const barWidth = 200;
+    const barX = 512 - barWidth / 2;
+    const barY = 18;
+    const fillWidth = Math.max(0, (done / total) * (barWidth - 4));
+
+    this.progressFill.clear();
+    this.progressFill.fillStyle(0x4ebd6b);
+    this.progressFill.fillRoundedRect(barX + 2, barY + 2, fillWidth, 8, 4);
+
+    this.progressText.setText(`Word ${Math.min(done + 1, total)} of ${total}`);
   }
 
   private updateWordDisplay() {
@@ -318,9 +388,14 @@ export class GameScene extends Phaser.Scene {
     const scrollAmount = this.scrollManager.getPixelsPerFrame(delta);
     this.cameraOffset += scrollAmount;
 
-    // Scroll ground and hills
+    // Scroll ground, hills, and clouds at different parallax rates
     this.ground.tilePositionX += scrollAmount;
     this.hills.tilePositionX += scrollAmount * 0.3;
+    this.hillsFar.tilePositionX += scrollAmount * 0.15;
+    for (const cloud of this.clouds) {
+      cloud.x -= scrollAmount * 0.05;
+      if (cloud.x < -100) cloud.x += 1200;
+    }
 
     // Update player
     this.player.update(delta);
@@ -342,6 +417,7 @@ export class GameScene extends Phaser.Scene {
           // If all letters done (missed or grabbed), move to next word
           if (this.currentWord.letterIndex >= this.currentWord.word.length) {
             this.wordsCompleted++;
+            this.updateProgress();
             this.scrollManager.increaseSpeed(this.levelConfig!.speedIncrement);
             this.time.delayedCall(600, () => {
               this.spawnNextWord();

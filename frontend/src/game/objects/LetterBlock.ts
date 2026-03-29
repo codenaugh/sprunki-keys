@@ -9,6 +9,7 @@ export class LetterBlock {
   private bg: Phaser.GameObjects.Graphics;
   private text: Phaser.GameObjects.Text;
   private glow: Phaser.GameObjects.Graphics;
+  private shadow: Phaser.GameObjects.Graphics;
   grabbed = false;
   missed = false;
   private bobOffset: number;
@@ -24,30 +25,51 @@ export class LetterBlock {
     this.container = scene.add.container(x, y);
     this.container.setDepth(5);
 
-    // Glow (hidden until active)
+    // Soft drop shadow
+    this.shadow = scene.add.graphics();
+    this.shadow.fillStyle(0x000000, 0.2);
+    this.shadow.fillRoundedRect(-22, -18, 44, 44, 10);
+    this.shadow.setPosition(3, 4);
+    this.container.add(this.shadow);
+
+    // Glow (hidden until in timing window)
     this.glow = scene.add.graphics();
-    this.glow.fillStyle(0xf1c40f, 0.3);
-    this.glow.fillCircle(0, 0, 32);
+    this.glow.fillStyle(0xf5c842, 0.25);
+    this.glow.fillCircle(0, 0, 36);
     this.glow.setAlpha(0);
     this.container.add(this.glow);
 
-    // Background circle
+    // Background — rounded rectangle with layered fill for depth
     this.bg = scene.add.graphics();
-    this.bg.fillStyle(0x3498db);
-    this.bg.fillCircle(0, 0, 24);
-    this.bg.lineStyle(3, 0xffffff, 0.8);
-    this.bg.strokeCircle(0, 0, 24);
+    this.drawBg(0x4a7dbd, 0x3a6ba8);
     this.container.add(this.bg);
 
     // Letter text
-    this.text = scene.add.text(0, 0, letter, {
-      fontSize: '24px',
-      fontFamily: 'monospace',
+    this.text = scene.add.text(0, 2, letter.toUpperCase(), {
+      fontSize: '22px',
+      fontFamily: "'Segoe UI', system-ui, sans-serif",
       color: '#ffffff',
       fontStyle: 'bold',
     });
     this.text.setOrigin(0.5);
+    this.text.setShadow(1, 1, 'rgba(0,0,0,0.3)', 2);
     this.container.add(this.text);
+  }
+
+  private drawBg(fill: number, darker: number) {
+    this.bg.clear();
+    // Main rounded rect
+    this.bg.fillStyle(fill);
+    this.bg.fillRoundedRect(-20, -20, 40, 40, 10);
+    // Bottom edge for depth
+    this.bg.fillStyle(darker);
+    this.bg.fillRoundedRect(-20, -10, 40, 30, { tl: 0, tr: 0, bl: 10, br: 10 });
+    // Top highlight
+    this.bg.fillStyle(0xffffff, 0.15);
+    this.bg.fillRoundedRect(-16, -17, 32, 14, { tl: 8, tr: 8, bl: 0, br: 0 });
+    // Border
+    this.bg.lineStyle(2, 0xffffff, 0.3);
+    this.bg.strokeRoundedRect(-20, -20, 40, 40, 10);
   }
 
   update(delta: number, cameraOffset: number) {
@@ -57,7 +79,10 @@ export class LetterBlock {
     this.bobOffset += delta * 0.003;
     const baseY = this.container.getData('baseY') ?? this.container.y;
     if (!this.container.getData('baseY')) this.container.setData('baseY', this.container.y);
-    this.container.y = baseY + Math.sin(this.bobOffset) * 6;
+    this.container.y = baseY + Math.sin(this.bobOffset) * 5;
+
+    // Gentle rotation
+    this.container.angle = Math.sin(this.bobOffset * 0.7 + 0.5) * 3;
 
     // Update screen position based on world position and camera
     this.container.x = this.worldX - cameraOffset;
@@ -65,9 +90,14 @@ export class LetterBlock {
     // Check if in timing window (relative to player position at x=200)
     const distToPlayer = Math.abs(this.container.x - 200);
     if (distToPlayer < this.timingWindowPx) {
-      this.glow.setAlpha(0.5 + Math.sin(Date.now() * 0.01) * 0.3);
+      const pulse = 0.4 + Math.sin(Date.now() * 0.008) * 0.3;
+      this.glow.setAlpha(pulse);
+      // Scale up slightly when close
+      const proximity = 1 - (distToPlayer / this.timingWindowPx);
+      this.container.setScale(1 + proximity * 0.15);
     } else {
       this.glow.setAlpha(0);
+      this.container.setScale(1);
     }
   }
 
@@ -90,17 +120,16 @@ export class LetterBlock {
     this.glow.setAlpha(0);
 
     // Green flash
-    this.bg.clear();
-    this.bg.fillStyle(0x2ecc71);
-    this.bg.fillCircle(0, 0, 24);
+    this.drawBg(0x4ebd6b, 0x38a855);
 
-    // Sparkle and fade out
+    // Float up and fade
     this.scene.tweens.add({
       targets: this.container,
-      y: this.container.y - 40,
+      y: this.container.y - 50,
       alpha: 0,
-      scaleX: 1.5,
-      scaleY: 1.5,
+      scaleX: 1.4,
+      scaleY: 1.4,
+      angle: 0,
       duration: 400,
       ease: 'Quad.easeOut',
       onComplete: () => {
@@ -108,7 +137,6 @@ export class LetterBlock {
       },
     });
 
-    // Spawn sparkle particles
     this.spawnSparkles();
   }
 
@@ -116,16 +144,16 @@ export class LetterBlock {
     this.missed = true;
     this.glow.setAlpha(0);
 
-    // Red flash
-    this.bg.clear();
-    this.bg.fillStyle(0xe74c3c, 0.5);
-    this.bg.fillCircle(0, 0, 24);
+    // Red and faded
+    this.drawBg(0xbd4a4a, 0xa83a3a);
     this.text.setAlpha(0.4);
+    this.container.setScale(1);
 
     this.scene.tweens.add({
       targets: this.container,
       alpha: 0,
       y: this.container.y + 30,
+      angle: 15,
       duration: 500,
       ease: 'Quad.easeIn',
       onComplete: () => {
@@ -148,43 +176,36 @@ export class LetterBlock {
       },
     });
 
-    // Brief red flash on bg
-    this.bg.clear();
-    this.bg.fillStyle(0xe74c3c);
-    this.bg.fillCircle(0, 0, 24);
-    this.bg.lineStyle(3, 0xffffff, 0.8);
-    this.bg.strokeCircle(0, 0, 24);
+    // Brief red flash
+    this.drawBg(0xbd4a4a, 0xa83a3a);
 
     this.scene.time.delayedCall(300, () => {
       if (!this.grabbed && !this.missed) {
-        this.bg.clear();
-        this.bg.fillStyle(0x3498db);
-        this.bg.fillCircle(0, 0, 24);
-        this.bg.lineStyle(3, 0xffffff, 0.8);
-        this.bg.strokeCircle(0, 0, 24);
+        this.drawBg(0x4a7dbd, 0x3a6ba8);
       }
     });
   }
 
   private spawnSparkles() {
-    const colors = [0xf1c40f, 0x2ecc71, 0xe94560, 0x3498db];
-    for (let i = 0; i < 8; i++) {
+    const colors = [0xf5c842, 0x4ebd6b, 0xe94560, 0x5dade2, 0xffffff];
+    for (let i = 0; i < 10; i++) {
       const sparkle = this.scene.add.graphics();
       const color = colors[Math.floor(Math.random() * colors.length)];
       sparkle.fillStyle(color);
-      sparkle.fillCircle(0, 0, 3 + Math.random() * 3);
+      const size = 2 + Math.random() * 3;
+      sparkle.fillRoundedRect(-size / 2, -size / 2, size, size, 1);
       sparkle.setPosition(this.container.x, this.container.y);
       sparkle.setDepth(15);
 
-      const angle = (Math.PI * 2 * i) / 8;
-      const dist = 30 + Math.random() * 30;
+      const angle = (Math.PI * 2 * i) / 10 + Math.random() * 0.3;
+      const dist = 25 + Math.random() * 35;
 
       this.scene.tweens.add({
         targets: sparkle,
         x: sparkle.x + Math.cos(angle) * dist,
-        y: sparkle.y + Math.sin(angle) * dist,
+        y: sparkle.y + Math.sin(angle) * dist - 15,
         alpha: 0,
-        duration: 400 + Math.random() * 200,
+        duration: 350 + Math.random() * 250,
         ease: 'Quad.easeOut',
         onComplete: () => sparkle.destroy(),
       });
