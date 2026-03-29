@@ -79,6 +79,11 @@ export class SoundManager {
       clearTimeout(this.bgmTimeout);
       this.bgmTimeout = null;
     }
+    if (this.bgmGain) {
+      this.bgmGain.gain.setValueAtTime(0, this.getContext().currentTime);
+      this.bgmGain.disconnect();
+      this.bgmGain = null;
+    }
     if (this.bgmOsc) {
       this.bgmOsc.stop();
       this.bgmOsc = null;

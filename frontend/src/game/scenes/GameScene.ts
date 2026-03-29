@@ -41,6 +41,7 @@ export class GameScene extends Phaser.Scene {
   private letterSpacing = 160;
   private gameActive = false;
   private characterId = 'pinki';
+  private wordPerfect = true;
 
   private qualityText!: Phaser.GameObjects.Text;
   private wordDisplayText!: Phaser.GameObjects.Text;
@@ -77,8 +78,9 @@ export class GameScene extends Phaser.Scene {
     // Calculate timing window in pixels from ms and speed
     this.timingWindowPx = (this.levelConfig.timingWindowMs / 1000) * this.levelConfig.scrollSpeed;
 
-    // Sky background
-    this.add.image(512, 288, 'sky-bg');
+    // Sky background (per-tier)
+    const tier = this.levelConfig.tier;
+    this.add.image(512, 288, `sky-bg-${tier}`);
 
     // Clouds — scattered at different heights and scales
     this.clouds = [];
@@ -90,7 +92,7 @@ export class GameScene extends Phaser.Scene {
       { x: 300, y: 130, s: 0.7, a: 0.25 },
     ];
     for (const cp of cloudPositions) {
-      const cloud = this.add.image(cp.x, cp.y, 'cloud');
+      const cloud = this.add.image(cp.x, cp.y, `cloud-${tier}`);
       cloud.setScale(cp.s);
       cloud.setAlpha(cp.a);
       cloud.setDepth(0);
@@ -98,16 +100,16 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Far hills — darker silhouette layer
-    this.hillsFar = this.add.tileSprite(512, this.groundY - 60, 1024, 200, 'hills-far');
+    this.hillsFar = this.add.tileSprite(512, this.groundY - 60, 1024, 200, `hills-far-${tier}`);
     this.hillsFar.setDepth(1);
     this.hillsFar.setAlpha(0.7);
 
     // Near hills
-    this.hills = this.add.tileSprite(512, this.groundY - 40, 1024, 200, 'hills');
+    this.hills = this.add.tileSprite(512, this.groundY - 40, 1024, 200, `hills-${tier}`);
     this.hills.setDepth(1);
 
     // Ground
-    this.ground = this.add.tileSprite(512, this.groundY + 32, 1024, 64, 'ground');
+    this.ground = this.add.tileSprite(512, this.groundY + 32, 1024, 64, `ground-${tier}`);
     this.ground.setDepth(2);
 
     // Player - use PNG character sprite, fall back to procedural if missing
@@ -257,6 +259,7 @@ export class GameScene extends Phaser.Scene {
       letterIndex: 0,
       blocks,
     };
+    this.wordPerfect = true;
 
     this.updateWordDisplay();
   }
@@ -272,36 +275,35 @@ export class GameScene extends Phaser.Scene {
     const isCorrect = key === expectedChar;
 
     if (isCorrect) {
-      const quality = activeBlock.getTimingQuality(this.playerScreenX, this.cameraOffset);
-      if (quality) {
-        // Grab the letter immediately (don't gate on jump animation)
-        activeBlock.grab();
-        this.player.jump(this.letterY, () => { /* visual only */ });
-        this.scoreManager.onLetterGrabbed(quality);
-        EventBus.emit('letter-grabbed');
-        this.showQualityText(quality);
-        current.letterIndex++;
-        this.updateWordDisplay();
+      // Correct key — always grab regardless of position
+      activeBlock.grab();
+      this.player.jump(this.letterY, () => { /* visual only */ });
 
-        // Check if word is complete
-        if (current.letterIndex >= current.word.length) {
-          this.wordsCompleted++;
-          this.updateProgress();
-          this.scrollManager.increaseSpeed(this.levelConfig!.speedIncrement);
-          this.time.delayedCall(600, () => {
-            this.spawnNextWord();
-          });
-        }
-      } else {
-        // Right key but bad timing - treat as wrong
-        activeBlock.wrongKey();
-        this.player.stumble();
-        this.scoreManager.onWrongKey();
-        EventBus.emit('wrong-key');
-        this.scrollManager.applyPenalty(500);
+      // Award more points if grabbed early (letter still ahead of player)
+      const screenX = activeBlock.getScreenX(this.cameraOffset);
+      const ahead = screenX - this.playerScreenX;
+      const quality = ahead > 80 ? 'perfect' : ahead > 20 ? 'good' : 'ok';
+      this.scoreManager.onLetterGrabbed(quality);
+      EventBus.emit('letter-grabbed');
+      this.showQualityText(quality);
+      current.letterIndex++;
+      this.updateWordDisplay();
+
+      // Check if word is complete
+      if (current.letterIndex >= current.word.length) {
+        const perfect = this.wordPerfect && current.blocks.every(b => b.grabbed);
+        this.scoreManager.onWordComplete(current.word.length, perfect);
+        if (perfect) this.showWordBonus();
+        this.wordsCompleted++;
+        this.updateProgress();
+        this.scrollManager.increaseSpeed(this.levelConfig!.speedIncrement);
+        this.time.delayedCall(600, () => {
+          this.spawnNextWord();
+        });
       }
     } else {
       // Wrong key
+      this.wordPerfect = false;
       activeBlock.wrongKey();
       this.player.stumble();
       this.scoreManager.onWrongKey();
@@ -316,9 +318,9 @@ export class GameScene extends Phaser.Scene {
       ok: '#3498db',
     };
     const labels: Record<string, string> = {
-      perfect: 'PERFECT!',
-      good: 'GOOD!',
-      ok: 'OK',
+      perfect: 'AMAZING!',
+      good: 'GREAT!',
+      ok: 'NICE!',
     };
 
     this.qualityText.setText(labels[quality] || quality);
@@ -341,6 +343,38 @@ export class GameScene extends Phaser.Scene {
           y: this.groundY - 180,
           duration: 800,
           ease: 'Quad.easeOut',
+        });
+      },
+    });
+  }
+
+  private showWordBonus() {
+    const bonusText = this.add.text(512, 250, 'WORD BONUS!', {
+      fontSize: '28px',
+      fontFamily: "'Segoe UI', system-ui, sans-serif",
+      color: '#f5c842',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 4,
+    });
+    bonusText.setOrigin(0.5);
+    bonusText.setDepth(25);
+    bonusText.setScale(0.5);
+
+    this.tweens.add({
+      targets: bonusText,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 200,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: bonusText,
+          alpha: 0,
+          y: 210,
+          duration: 700,
+          ease: 'Quad.easeOut',
+          onComplete: () => bonusText.destroy(),
         });
       },
     });
@@ -416,6 +450,9 @@ export class GameScene extends Phaser.Scene {
 
           // If all letters done (missed or grabbed), move to next word
           if (this.currentWord.letterIndex >= this.currentWord.word.length) {
+            const perfect = this.wordPerfect && this.currentWord.blocks.every(b => b.grabbed);
+            this.scoreManager.onWordComplete(this.currentWord.word.length, perfect);
+            if (perfect) this.showWordBonus();
             this.wordsCompleted++;
             this.updateProgress();
             this.scrollManager.increaseSpeed(this.levelConfig!.speedIncrement);

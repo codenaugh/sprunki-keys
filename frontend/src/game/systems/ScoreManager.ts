@@ -26,6 +26,15 @@ export class ScoreManager {
     this.emitUpdate();
   }
 
+  onWordComplete(wordLength: number, allGrabbed: boolean) {
+    if (allGrabbed) {
+      // Bonus for grabbing every letter: 50 points per letter
+      const bonus = wordLength * 50;
+      this.score += Math.round(bonus * this.multiplier);
+      this.emitUpdate();
+    }
+  }
+
   onLetterMissed() {
     this.combo = 0;
     this.multiplier = 1;

@@ -8,18 +8,17 @@ export class LetterBlock {
   worldX: number;
   private bg: Phaser.GameObjects.Graphics;
   private text: Phaser.GameObjects.Text;
-  private glow: Phaser.GameObjects.Graphics;
   private shadow: Phaser.GameObjects.Graphics;
   grabbed = false;
   missed = false;
   private bobOffset: number;
-  private timingWindowPx: number;
+  private dangerZone = 150;
+  private flashing = false;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, letter: string, timingWindowPx: number) {
+  constructor(scene: Phaser.Scene, x: number, y: number, letter: string, _timingWindowPx: number) {
     this.scene = scene;
     this.letter = letter;
     this.worldX = x;
-    this.timingWindowPx = timingWindowPx;
     this.bobOffset = Math.random() * Math.PI * 2;
 
     this.container = scene.add.container(x, y);
@@ -31,13 +30,6 @@ export class LetterBlock {
     this.shadow.fillRoundedRect(-22, -18, 44, 44, 10);
     this.shadow.setPosition(3, 4);
     this.container.add(this.shadow);
-
-    // Glow (hidden until in timing window)
-    this.glow = scene.add.graphics();
-    this.glow.fillStyle(0xf5c842, 0.25);
-    this.glow.fillCircle(0, 0, 36);
-    this.glow.setAlpha(0);
-    this.container.add(this.glow);
 
     // Background — rounded rectangle with layered fill for depth
     this.bg = scene.add.graphics();
@@ -87,17 +79,17 @@ export class LetterBlock {
     // Update screen position based on world position and camera
     this.container.x = this.worldX - cameraOffset;
 
-    // Check if in timing window (relative to player position at x=200)
-    const distToPlayer = Math.abs(this.container.x - 200);
-    if (distToPlayer < this.timingWindowPx) {
-      const pulse = 0.4 + Math.sin(Date.now() * 0.008) * 0.3;
-      this.glow.setAlpha(pulse);
-      // Scale up slightly when close
-      const proximity = 1 - (distToPlayer / this.timingWindowPx);
-      this.container.setScale(1 + proximity * 0.15);
-    } else {
-      this.glow.setAlpha(0);
-      this.container.setScale(1);
+    // Flash red when letter is about to scroll past the player
+    if (this.container.x < 200 + this.dangerZone && this.container.x > -50) {
+      const urgency = 1 - ((this.container.x - (-50)) / (200 + this.dangerZone + 50));
+      const flash = Math.sin(Date.now() * 0.012) > 0;
+      if (urgency > 0.3 && flash && !this.flashing) {
+        this.drawBg(0xbd4a4a, 0xa83a3a);
+        this.flashing = true;
+      } else if (!flash && this.flashing) {
+        this.drawBg(0x4a7dbd, 0x3a6ba8);
+        this.flashing = false;
+      }
     }
   }
 
@@ -117,7 +109,6 @@ export class LetterBlock {
 
   grab() {
     this.grabbed = true;
-    this.glow.setAlpha(0);
 
     // Green flash
     this.drawBg(0x4ebd6b, 0x38a855);
@@ -142,7 +133,6 @@ export class LetterBlock {
 
   miss() {
     this.missed = true;
-    this.glow.setAlpha(0);
 
     // Red and faded
     this.drawBg(0xbd4a4a, 0xa83a3a);
