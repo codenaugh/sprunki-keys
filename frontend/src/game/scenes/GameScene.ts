@@ -442,6 +442,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   private showCountdown() {
+    // Show player and HUD at start of countdown
+    this.player.body.setVisible(true);
+    this.progressBg.setVisible(true);
+    this.progressFill.setVisible(true);
+    this.progressText.setVisible(true);
+    this.wordDisplayText.setVisible(true);
+    this.qualityText.setVisible(true);
+    EventBus.emit('game-started');
+
     const countdownText = this.add.text(512, 250, '3', {
       fontSize: '72px',
       fontFamily: 'system-ui',
@@ -477,13 +486,6 @@ export class GameScene extends Phaser.Scene {
             onComplete: () => {
               countdownText.destroy();
               timer.destroy();
-              this.player.body.setVisible(true);
-              this.progressBg.setVisible(true);
-              this.progressFill.setVisible(true);
-              this.progressText.setVisible(true);
-              this.wordDisplayText.setVisible(true);
-              this.qualityText.setVisible(true);
-              EventBus.emit('game-started');
               this.gameActive = true;
               this.soundManager.startBGM();
               this.spawnNextWord();
