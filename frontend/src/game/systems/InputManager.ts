@@ -6,12 +6,27 @@ export class InputManager {
   private cooldownMs = 80;
   private lastKeyTime = 0;
   private hiddenInput: HTMLInputElement | null = null;
+  private mobileInputCreated = false;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     this.scene.input.keyboard!.on('keydown', this.handleKeyDown, this);
 
-    // Hidden input for mobile keyboard support
+    // Create mobile input lazily on first tap (avoids browser permission prompts)
+    this.scene.input.on('pointerdown', this.onFirstTap, this);
+  }
+
+  onKeyPress(callback: (key: string) => void) {
+    this.listeners.push(callback);
+  }
+
+  private onFirstTap = () => {
+    if (this.mobileInputCreated) {
+      this.hiddenInput?.focus();
+      return;
+    }
+    this.mobileInputCreated = true;
+
     this.hiddenInput = document.createElement('input');
     this.hiddenInput.type = 'text';
     this.hiddenInput.autocapitalize = 'off';
@@ -22,14 +37,8 @@ export class InputManager {
       'position:fixed;top:-100px;left:0;width:1px;height:1px;opacity:0;';
     document.body.appendChild(this.hiddenInput);
     this.hiddenInput.addEventListener('input', this.handleMobileInput);
-
-    // Focus on tap/click for mobile (no auto-focus to avoid browser permission prompts)
-    this.scene.input.on('pointerdown', this.focusMobileInput, this);
-  }
-
-  onKeyPress(callback: (key: string) => void) {
-    this.listeners.push(callback);
-  }
+    this.hiddenInput.focus();
+  };
 
   private handleKeyDown(event: KeyboardEvent) {
     const now = Date.now();
@@ -60,13 +69,9 @@ export class InputManager {
     }
   };
 
-  private focusMobileInput = () => {
-    this.hiddenInput?.focus();
-  };
-
   destroy() {
     this.scene.input.keyboard?.off('keydown', this.handleKeyDown, this);
-    this.scene.input.off('pointerdown', this.focusMobileInput, this);
+    this.scene.input.off('pointerdown', this.onFirstTap, this);
     if (this.hiddenInput) {
       this.hiddenInput.removeEventListener('input', this.handleMobileInput);
       this.hiddenInput.remove();
