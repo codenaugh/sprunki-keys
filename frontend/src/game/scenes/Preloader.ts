@@ -71,6 +71,7 @@ export class Preloader extends Phaser.Scene {
     for (const char of CHARACTERS) {
       this.load.image(`char-${char.id}`, `/assets/sprites/characters/${char.id}.png`);
     }
+    this.load.image('char-hanna', '/assets/sprites/characters/hanna.png');
   }
 
   create() {

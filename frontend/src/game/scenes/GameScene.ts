@@ -53,10 +53,15 @@ export class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
-  init(data: { levelConfig: LevelConfig; words: string[]; characterId?: string }) {
+  private seenTiers: number[] = [];
+  private isFirstGame = false;
+
+  init(data: { levelConfig: LevelConfig; words: string[]; characterId?: string; seenTiers?: number[]; isFirstGame?: boolean }) {
     this.levelConfig = data.levelConfig;
     this.wordList = data.words;
     this.characterId = data.characterId || 'pinki';
+    this.seenTiers = data.seenTiers || [];
+    this.isFirstGame = data.isFirstGame || false;
     this.cameraOffset = 0;
     this.wordsCompleted = 0;
     this.currentWord = null;
@@ -115,6 +120,7 @@ export class GameScene extends Phaser.Scene {
     // Player - use PNG character sprite, fall back to procedural if missing
     const textureKey = `char-${this.characterId}`;
     this.player = new Player(this, this.playerScreenX, this.groundY - 35, textureKey);
+    this.player.body.setVisible(false);
 
     // Quality text (Perfect! Good! etc)
     this.qualityText = this.add.text(this.playerScreenX, this.groundY - 110, '', {
@@ -165,6 +171,13 @@ export class GameScene extends Phaser.Scene {
     this.progressText.setDepth(20);
     this.updateProgress();
 
+    // Hide HUD elements until game starts
+    this.progressBg.setVisible(false);
+    this.progressFill.setVisible(false);
+    this.progressText.setVisible(false);
+    this.wordDisplayText.setVisible(false);
+    this.qualityText.setVisible(false);
+
     // Systems
     this.scrollManager = new ScrollManager(this.levelConfig.scrollSpeed);
     this.scoreManager = new ScoreManager();
@@ -178,10 +191,254 @@ export class GameScene extends Phaser.Scene {
     EventBus.on('game-resume', this.resumeGame, this);
     EventBus.on('game-restart', this.restartGame, this);
 
-    // Start the game after a brief countdown
-    this.showCountdown();
+    // First time playing: show scoring rules first, then level screen
+    // Otherwise: just show the level screen (same per tier)
+    if (this.isFirstGame) {
+      this.showInstructions();
+    } else {
+      this.showLevelScreen();
+    }
 
     EventBus.emit('current-scene-ready', this);
+  }
+
+  private getRowTips(): { title: string; keys: string; tip: string; newBadge?: string } {
+    const rows = this.levelConfig!.allowedRows;
+    if (rows.length === 1 && rows[0] === 'home') {
+      return {
+        title: 'Home Row',
+        keys: 'A  S  D  F  G  H  J  K  L  ;',
+        tip: 'Place your fingers on the home row\nand try not to look at the keyboard!',
+      };
+    }
+    if (rows.length === 2) {
+      return {
+        title: 'Home + Top Row',
+        keys: 'Q W E R T Y U I O P\n A  S  D  F  G  H  J  K  L  ;',
+        tip: 'Reach up for the top row keys,\nthen come back to home row!',
+        newBadge: 'New: Top Row Keys!',
+      };
+    }
+    if (this.levelConfig!.requireShift) {
+      return {
+        title: 'All Keys + Shift',
+        keys: 'All letter keys + Shift for capitals',
+        tip: 'Hold Shift with your pinky\nfor capital letters!',
+        newBadge: 'New: Capital Letters!',
+      };
+    }
+    return {
+      title: 'Full Keyboard',
+      keys: 'Q W E R T Y U I O P\n A  S  D  F  G  H  J  K  L  ;\n   Z  X  C  V  B  N  M',
+      tip: 'Use all three rows!\nKeep your fingers on the home row between words.',
+      newBadge: 'New: Bottom Row Keys!',
+    };
+  }
+
+  private destroyScreen(items: Phaser.GameObjects.GameObject[]) {
+    items.forEach(obj => obj.destroy());
+    this.children.list
+      .filter(c => c.depth === 31)
+      .forEach(c => c.destroy());
+  }
+
+  // Screen 1: How scoring works
+  private showInstructions() {
+    const overlay = this.add.graphics();
+    overlay.fillStyle(0x000000, 0.75);
+    overlay.fillRect(0, 0, 1024, 576);
+    overlay.setDepth(30);
+
+    const charImg = this.add.image(160, 288, 'char-hanna');
+    charImg.setScale(1.4);
+    charImg.setDepth(31);
+
+    const titleText = this.add.text(580, 100, 'How to Play', {
+      fontSize: '32px',
+      fontFamily: "'Segoe UI', system-ui, sans-serif",
+      color: '#f5c842',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 4,
+    });
+    titleText.setOrigin(0.5);
+    titleText.setDepth(31);
+
+    const rules = [
+      { icon: '>', text: 'Type the correct letter to grab it', color: '#4ebd6b' },
+      { icon: '!', text: 'Wrong keys break your combo', color: '#e94560' },
+      { icon: '+', text: 'Grab every letter for a Word Bonus', color: '#f5c842' },
+      { icon: 'x', text: 'Build combos for a score multiplier', color: '#5dade2' },
+    ];
+
+    rules.forEach((rule, i) => {
+      const y = 170 + i * 45;
+      const icon = this.add.text(420, y, rule.icon, {
+        fontSize: '20px',
+        fontFamily: 'monospace',
+        color: rule.color,
+        fontStyle: 'bold',
+      });
+      icon.setOrigin(0.5);
+      icon.setDepth(31);
+
+      const text = this.add.text(445, y, rule.text, {
+        fontSize: '18px',
+        fontFamily: "'Segoe UI', system-ui, sans-serif",
+        color: '#ffffff',
+      });
+      text.setOrigin(0, 0.5);
+      text.setDepth(31);
+    });
+
+    const continueText = this.add.text(580, 430, 'Click or press any key to continue', {
+      fontSize: '20px',
+      fontFamily: "'Segoe UI', system-ui, sans-serif",
+      color: '#ffffff',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3,
+    });
+    continueText.setOrigin(0.5);
+    continueText.setDepth(31);
+
+    this.tweens.add({
+      targets: continueText,
+      alpha: 0.4,
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    const screenItems = [overlay, charImg, titleText, continueText];
+
+    const advance = () => {
+      this.input.keyboard!.off('keydown', advance);
+      this.input.off('pointerdown', advance);
+      this.destroyScreen(screenItems);
+      this.showLevelScreen();
+    };
+
+    // Delay slightly so a stray click/key doesn't skip instantly
+    this.time.delayedCall(300, () => {
+      this.input.keyboard!.on('keydown', advance);
+      this.input.on('pointerdown', advance);
+    });
+  }
+
+  // Screen 2: Level-specific instructions
+  private showLevelScreen() {
+    const overlay = this.add.graphics();
+    overlay.fillStyle(0x000000, 0.75);
+    overlay.fillRect(0, 0, 1024, 576);
+    overlay.setDepth(30);
+
+    const charImg = this.add.image(160, 288, 'char-hanna');
+    charImg.setScale(1.4);
+    charImg.setDepth(31);
+
+    const rowInfo = this.getRowTips();
+
+    const titleText = this.add.text(580, 100, this.levelConfig!.name, {
+      fontSize: '36px',
+      fontFamily: "'Segoe UI', system-ui, sans-serif",
+      color: '#f5c842',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 4,
+    });
+    titleText.setOrigin(0.5);
+    titleText.setDepth(31);
+
+    const subtitleText = this.add.text(580, 145, rowInfo.title, {
+      fontSize: '22px',
+      fontFamily: "'Segoe UI', system-ui, sans-serif",
+      color: '#ffffff',
+      fontStyle: 'bold',
+    });
+    subtitleText.setOrigin(0.5);
+    subtitleText.setDepth(31);
+
+    const keysText = this.add.text(580, 210, rowInfo.keys, {
+      fontSize: '18px',
+      fontFamily: 'monospace',
+      color: '#5dade2',
+      align: 'center',
+    });
+    keysText.setOrigin(0.5);
+    keysText.setDepth(31);
+
+    const screenExtras: Phaser.GameObjects.GameObject[] = [];
+
+    // Show "New:" badge for tier transitions
+    const isNewTier = !this.seenTiers.includes(this.levelConfig!.tier);
+    if (rowInfo.newBadge && isNewTier) {
+      const badge = this.add.text(580, 265, rowInfo.newBadge, {
+        fontSize: '20px',
+        fontFamily: "'Segoe UI', system-ui, sans-serif",
+        color: '#2ecc71',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 3,
+      });
+      badge.setOrigin(0.5);
+      badge.setDepth(31);
+      screenExtras.push(badge);
+
+      this.tweens.add({
+        targets: badge,
+        scaleX: 1.1,
+        scaleY: 1.1,
+        duration: 500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+
+    const tipText = this.add.text(580, 320, rowInfo.tip, {
+      fontSize: '18px',
+      fontFamily: "'Segoe UI', system-ui, sans-serif",
+      color: '#b8c5d6',
+      align: 'center',
+    });
+    tipText.setOrigin(0.5);
+    tipText.setDepth(31);
+
+    const startText = this.add.text(580, 430, 'Press any key to begin!', {
+      fontSize: '22px',
+      fontFamily: "'Segoe UI', system-ui, sans-serif",
+      color: '#ffffff',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3,
+    });
+    startText.setOrigin(0.5);
+    startText.setDepth(31);
+
+    this.tweens.add({
+      targets: startText,
+      alpha: 0.4,
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    const screenItems = [overlay, charImg, titleText, subtitleText, keysText, tipText, startText, ...screenExtras];
+
+    const start = () => {
+      this.input.keyboard!.off('keydown', start);
+      this.input.off('pointerdown', start);
+      this.destroyScreen(screenItems);
+      this.showCountdown();
+    };
+
+    this.time.delayedCall(300, () => {
+      this.input.keyboard!.on('keydown', start);
+      this.input.on('pointerdown', start);
+    });
   }
 
   private showCountdown() {
@@ -220,6 +477,13 @@ export class GameScene extends Phaser.Scene {
             onComplete: () => {
               countdownText.destroy();
               timer.destroy();
+              this.player.body.setVisible(true);
+              this.progressBg.setVisible(true);
+              this.progressFill.setVisible(true);
+              this.progressText.setVisible(true);
+              this.wordDisplayText.setVisible(true);
+              this.qualityText.setVisible(true);
+              EventBus.emit('game-started');
               this.gameActive = true;
               this.soundManager.startBGM();
               this.spawnNextWord();
@@ -521,6 +785,8 @@ export class GameScene extends Phaser.Scene {
       levelConfig: this.levelConfig,
       words: this.wordList,
       characterId: this.characterId,
+      seenTiers: this.seenTiers,
+      isFirstGame: false,
     });
   }
 

@@ -14,15 +14,20 @@ export function HUD() {
   const [settings, setSettings] = useState(getSettings());
   const navigate = useNavigate();
 
+  const [gameStarted, setGameStarted] = useState(false);
+
   useEffect(() => {
+    const onStarted = () => setGameStarted(true);
     const onPaused = () => setPaused(true);
     const onResumed = () => {
       setPaused(false);
       setShowSettings(false);
     };
+    EventBus.on('game-started', onStarted);
     EventBus.on('game-paused', onPaused);
     EventBus.on('game-resumed', onResumed);
     return () => {
+      EventBus.off('game-started', onStarted);
       EventBus.off('game-paused', onPaused);
       EventBus.off('game-resumed', onResumed);
     };
@@ -57,6 +62,8 @@ export function HUD() {
     saveSettings(updated);
     EventBus.emit('settings-changed', updated);
   };
+
+  if (!gameStarted) return null;
 
   return (
     <>

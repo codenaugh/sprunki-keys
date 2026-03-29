@@ -55,6 +55,14 @@ export function GamePage() {
       const playerData = loadPlayerData();
       levelRef = level;
 
+      // Determine which tiers the player has already completed levels in
+      const seenTiers = [...new Set(
+        levels
+          .filter(l => playerData.levelScores[l.id])
+          .map(l => l.tier)
+      )];
+      const isFirstGame = Object.keys(playerData.levelScores).length === 0;
+
       const phaserGame = new Phaser.Game(gameConfig);
       gameRef.current = phaserGame;
 
@@ -66,6 +74,8 @@ export function GamePage() {
             levelConfig: level,
             words,
             characterId: playerData.selectedCharacterId,
+            seenTiers,
+            isFirstGame,
           });
         }
       };
