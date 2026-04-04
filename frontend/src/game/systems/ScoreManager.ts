@@ -16,6 +16,7 @@ export class ScoreManager {
   hits = 0;
   misses = 0;
   wrongs = 0;
+  timeBonus = 0;
 
   onLetterGrabbed(quality: TimingQuality) {
     this.combo++;
@@ -33,6 +34,13 @@ export class ScoreManager {
       this.score += Math.round(bonus * this.multiplier);
       this.emitUpdate();
     }
+  }
+
+  addTimeBonus(bonus: number) {
+    const rounded = Math.round(bonus);
+    this.timeBonus += rounded;
+    this.score += rounded;
+    this.emitUpdate();
   }
 
   onLetterMissed() {
@@ -55,11 +63,11 @@ export class ScoreManager {
     return this.hits / total;
   }
 
-  getStars(thresholds: [number, number, number]): number {
-    if (this.score >= thresholds[2]) return 3;
-    if (this.score >= thresholds[1]) return 2;
-    if (this.score >= thresholds[0]) return 1;
-    return 0;
+  getStars(): number {
+    const accuracy = this.getAccuracy();
+    if (accuracy >= 0.95) return 3;
+    if (accuracy >= 0.70) return 2;
+    return 1;
   }
 
   reset() {
@@ -70,6 +78,7 @@ export class ScoreManager {
     this.hits = 0;
     this.misses = 0;
     this.wrongs = 0;
+    this.timeBonus = 0;
     this.emitUpdate();
   }
 

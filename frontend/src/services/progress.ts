@@ -4,17 +4,17 @@ import { loadPlayerData } from './storage';
 
 const FALLBACK_LEVELS: LevelConfig[] = [
   {id:1,name:"Home Sweet Home",tier:1,scrollSpeed:60,speedIncrement:2,timingWindowMs:2000,wordCount:5,allowedRows:["home"],requireShift:false,speedWords:false,unlockRequirement:0,starThresholds:[150,275,400]},
-  {id:2,name:"Getting Comfy",tier:1,scrollSpeed:70,speedIncrement:2,timingWindowMs:1800,wordCount:6,allowedRows:["home"],requireShift:false,speedWords:false,unlockRequirement:1,starThresholds:[180,330,480]},
-  {id:3,name:"Home Run",tier:1,scrollSpeed:80,speedIncrement:3,timingWindowMs:1500,wordCount:8,allowedRows:["home"],requireShift:false,speedWords:false,unlockRequirement:1,starThresholds:[240,440,640]},
-  {id:4,name:"Reaching Up",tier:2,scrollSpeed:90,speedIncrement:3,timingWindowMs:1400,wordCount:8,allowedRows:["home","top"],requireShift:false,speedWords:false,unlockRequirement:1,starThresholds:[240,440,640]},
-  {id:5,name:"Top Explorer",tier:2,scrollSpeed:100,speedIncrement:3,timingWindowMs:1200,wordCount:10,allowedRows:["home","top"],requireShift:false,speedWords:false,unlockRequirement:2,starThresholds:[300,550,800]},
-  {id:6,name:"Row Master",tier:2,scrollSpeed:110,speedIncrement:4,timingWindowMs:1000,wordCount:10,allowedRows:["home","top"],requireShift:false,speedWords:false,unlockRequirement:2,starThresholds:[300,550,800]},
-  {id:7,name:"Full Board",tier:3,scrollSpeed:120,speedIncrement:4,timingWindowMs:900,wordCount:10,allowedRows:["home","top","bottom"],requireShift:false,speedWords:false,unlockRequirement:2,starThresholds:[300,550,800]},
-  {id:8,name:"Speed Demon",tier:3,scrollSpeed:130,speedIncrement:4,timingWindowMs:800,wordCount:12,allowedRows:["home","top","bottom"],requireShift:false,speedWords:false,unlockRequirement:2,starThresholds:[360,660,960]},
-  {id:9,name:"Key Ninja",tier:3,scrollSpeed:140,speedIncrement:5,timingWindowMs:700,wordCount:12,allowedRows:["home","top","bottom"],requireShift:false,speedWords:false,unlockRequirement:2,starThresholds:[360,660,960]},
-  {id:10,name:"Shift It Up",tier:4,scrollSpeed:150,speedIncrement:5,timingWindowMs:600,wordCount:12,allowedRows:["home","top","bottom"],requireShift:true,speedWords:false,unlockRequirement:2,starThresholds:[360,660,960]},
-  {id:11,name:"Capital City",tier:4,scrollSpeed:160,speedIncrement:5,timingWindowMs:500,wordCount:15,allowedRows:["home","top","bottom"],requireShift:true,speedWords:false,unlockRequirement:2,starThresholds:[450,825,1200]},
-  {id:12,name:"Sprunki Master",tier:4,scrollSpeed:180,speedIncrement:6,timingWindowMs:400,wordCount:15,allowedRows:["home","top","bottom"],requireShift:true,speedWords:true,unlockRequirement:2,starThresholds:[450,825,1200]},
+  {id:2,name:"Getting Comfy",tier:1,scrollSpeed:70,speedIncrement:2,timingWindowMs:1800,wordCount:6,allowedRows:["home"],requireShift:false,speedWords:false,unlockRequirement:3,starThresholds:[180,330,480]},
+  {id:3,name:"Home Run",tier:1,scrollSpeed:80,speedIncrement:3,timingWindowMs:1500,wordCount:8,allowedRows:["home"],requireShift:false,speedWords:false,unlockRequirement:3,starThresholds:[240,440,640]},
+  {id:4,name:"Reaching Up",tier:2,scrollSpeed:90,speedIncrement:3,timingWindowMs:1400,wordCount:8,allowedRows:["home","top"],requireShift:false,speedWords:false,unlockRequirement:3,starThresholds:[240,440,640]},
+  {id:5,name:"Top Explorer",tier:2,scrollSpeed:100,speedIncrement:3,timingWindowMs:1200,wordCount:10,allowedRows:["home","top"],requireShift:false,speedWords:false,unlockRequirement:3,starThresholds:[300,550,800]},
+  {id:6,name:"Row Master",tier:2,scrollSpeed:110,speedIncrement:4,timingWindowMs:1000,wordCount:10,allowedRows:["home","top"],requireShift:false,speedWords:false,unlockRequirement:3,starThresholds:[300,550,800]},
+  {id:7,name:"Full Board",tier:3,scrollSpeed:120,speedIncrement:4,timingWindowMs:900,wordCount:10,allowedRows:["home","top","bottom"],requireShift:false,speedWords:false,unlockRequirement:3,starThresholds:[300,550,800]},
+  {id:8,name:"Speed Demon",tier:3,scrollSpeed:130,speedIncrement:4,timingWindowMs:800,wordCount:12,allowedRows:["home","top","bottom"],requireShift:false,speedWords:false,unlockRequirement:3,starThresholds:[360,660,960]},
+  {id:9,name:"Key Ninja",tier:3,scrollSpeed:140,speedIncrement:5,timingWindowMs:700,wordCount:12,allowedRows:["home","top","bottom"],requireShift:false,speedWords:false,unlockRequirement:3,starThresholds:[360,660,960]},
+  {id:10,name:"Shift It Up",tier:4,scrollSpeed:150,speedIncrement:5,timingWindowMs:600,wordCount:12,allowedRows:["home","top","bottom"],requireShift:true,speedWords:false,unlockRequirement:3,starThresholds:[360,660,960]},
+  {id:11,name:"Capital City",tier:4,scrollSpeed:160,speedIncrement:5,timingWindowMs:500,wordCount:15,allowedRows:["home","top","bottom"],requireShift:true,speedWords:false,unlockRequirement:3,starThresholds:[450,825,1200]},
+  {id:12,name:"Sprunki Master",tier:4,scrollSpeed:180,speedIncrement:6,timingWindowMs:400,wordCount:15,allowedRows:["home","top","bottom"],requireShift:true,speedWords:true,unlockRequirement:3,starThresholds:[450,825,1200]},
 ];
 
 const FALLBACK_WORDS: Record<number, string[]> = {

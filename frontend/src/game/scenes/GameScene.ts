@@ -42,6 +42,7 @@ export class GameScene extends Phaser.Scene {
   private gameActive = false;
   private characterId = 'pinki';
   private wordPerfect = true;
+  private wordStartTime = 0;
 
   private qualityText!: Phaser.GameObjects.Text;
   private wordDisplayText!: Phaser.GameObjects.Text;
@@ -269,10 +270,12 @@ export class GameScene extends Phaser.Scene {
       { icon: '!', text: 'Wrong keys break your combo', color: '#e94560' },
       { icon: '+', text: 'Grab every letter for a Word Bonus', color: '#f5c842' },
       { icon: 'x', text: 'Build combos for a score multiplier', color: '#5dade2' },
+      { icon: '\u26a1', text: 'Type words quickly for a Speed Bonus', color: '#e67e22' },
+      { icon: '\u2605', text: '95% accuracy = 3 stars & next level!', color: '#f39c12' },
     ];
 
     rules.forEach((rule, i) => {
-      const y = 170 + i * 45;
+      const y = 155 + i * 40;
       const icon = this.add.text(420, y, rule.icon, {
         fontSize: '20px',
         fontFamily: 'monospace',
@@ -526,6 +529,7 @@ export class GameScene extends Phaser.Scene {
       blocks,
     };
     this.wordPerfect = true;
+    this.wordStartTime = this.time.now;
 
     this.updateWordDisplay();
   }
@@ -560,6 +564,16 @@ export class GameScene extends Phaser.Scene {
         const perfect = this.wordPerfect && current.blocks.every(b => b.grabbed);
         this.scoreManager.onWordComplete(current.word.length, perfect);
         if (perfect) this.showWordBonus();
+
+        // Time bonus: linearly interpolated from fast (full bonus) to par (no bonus)
+        const elapsedMs = this.time.now - this.wordStartTime;
+        const parMs = current.word.length * (this.letterSpacing / this.levelConfig!.scrollSpeed) * 1000;
+        const fastMs = parMs * 0.3;
+        if (elapsedMs < parMs) {
+          const t = Math.max(0, (parMs - elapsedMs) / (parMs - fastMs));
+          const maxBonus = current.word.length * 30;
+          this.scoreManager.addTimeBonus(Math.min(t, 1) * maxBonus);
+        }
         this.wordsCompleted++;
         this.updateProgress();
         this.scrollManager.increaseSpeed(this.levelConfig!.speedIncrement);
@@ -735,7 +749,7 @@ export class GameScene extends Phaser.Scene {
     this.gameActive = false;
     this.player.celebrate();
 
-    const stars = this.scoreManager.getStars(this.levelConfig!.starThresholds);
+    const stars = this.scoreManager.getStars();
 
     // Show completion text
     const completeText = this.add.text(512, 250, 'Level Complete!', {
